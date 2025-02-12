@@ -1,3 +1,5 @@
 openai
 flask
 pinecone-client
+PyGithub
+tiktoken
