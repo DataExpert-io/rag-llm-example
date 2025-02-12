@@ -2,11 +2,12 @@ import os
 import subprocess
 import math
 from openai import OpenAI
-
+from chunk_text import chunk_gpt_tokens
+from upsert_to_pinecone import upsert_to_pinecone
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 # 1. Configuration
-VIDEO_FILE = "videos/five_transformations.mp4"
+VIDEO_FILE = "videos/data_contracts.mp4"
 CHUNK_LENGTH_SECONDS = 60  # for example, 300s = 5 minutes per chunk
 TEMP_DIR = "temp_chunks"
 LANGUAGE = "en"
@@ -76,3 +77,7 @@ for idx, chunk_path in enumerate(chunk_file_paths):
 # 7. Print or save the final transcription
 print("\nFinal Transcription:\n")
 print(full_transcription.strip())
+
+chunks = chunk_gpt_tokens(full_transcription.strip(), chunk_size=50, overlap=25)
+for chunk in chunks:
+  upsert_to_pinecone(chunk['chunk_text'], metadata={'video_id': VIDEO_FILE, 'category': 'Education'})

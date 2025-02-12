@@ -1,7 +1,6 @@
 import tiktoken
 import os
 from openai import OpenAI
-print(os.getenv('OPENAI_API_KEY'))
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 
@@ -45,13 +44,13 @@ def chunk_gpt_tokens(text, chunk_size=200, overlap=50, model_name='text-embeddin
 
 
 # Example usage
-text = (
-    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
-    "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. "
-    "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris..."
-)
+# text = (
+#     "Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
+#     "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. "
+#     "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris..."
+# )
 
-gpt_chunks = chunk_gpt_tokens(text, chunk_size=200, overlap=50)
-
-print("Number of GPT token chunks:", len(gpt_chunks))
-print("First GPT chunk (decoded as text):", gpt_chunks[0])
+# gpt_chunks = chunk_gpt_tokens(text, chunk_size=200, overlap=50)
+#
+# print("Number of GPT token chunks:", len(gpt_chunks))
+# print("First GPT chunk (decoded as text):", gpt_chunks[0])

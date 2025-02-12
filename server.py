@@ -12,7 +12,7 @@ PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 pinecone_client = Pinecone(
     api_key=PINECONE_API_KEY
 )
-INDEX_NAME = 'dataexpert-community'  # Replace with your Pinecone index name
+INDEX_NAME = 'rag-example-index'  # Replace with your Pinecone index name
 # Assuming the index has already been created in Pinecone
 index = pinecone_client.Index(INDEX_NAME)
 CHATGPT_MODEL = "gpt-4"
@@ -23,7 +23,6 @@ def query_pinecone(query_embedding, top_k=20):
     query_response = index.query(
         vector=query_embedding,
         top_k=top_k,
-        filter={'is_priority': True},
         include_values=True,  # Only need metadata, unless you want the vectors
         include_metadata=True  # So we can retrieve text or other data
     )
@@ -45,10 +44,13 @@ def generate_answer_with_context(question, context):
     """Calls ChatGPT with the retrieved context and returns an answer."""
     # Prepare a prompt with the context
     system_content = (
-        "You are a helpful assistant. Use the following context to answer the question:\n\n"
+        "You are a helpful assistant. Use the following context to answer the question, make sure to include the file path and repo in your response:\n\n"
         f"{context}\n\n"
         "If the answer cannot be found in the context, provide your best possible answer."
     )
+
+    print(system_content)
+    print(question)
 
     response = client.chat.completions.create(
         model=CHATGPT_MODEL,
@@ -81,14 +83,19 @@ def ask_question():
     print(question_embedding)
     # 2. Query Pinecone for relevant documents
     pinecone_results = query_pinecone(question_embedding, top_k=20)
-
+    print(pinecone_results)
     # 3. Extract relevant context from the metadata (assuming we stored text in metadata["text"])
     retrieved_contexts = []
     for match in pinecone_results.matches:
         metadata = match.metadata
         print(metadata)
         text = metadata.get("content", "")
-        retrieved_contexts.append(text)
+        repo = metadata.get('repo', '')
+        file = metadata.get('file', '')
+        combined_text = text
+        if repo or file:
+            combined_text = f"""Found in file: {file}, repo: {repo} content: {text}"""
+        retrieved_contexts.append(combined_text)
 
     print(retrieved_contexts)
     # Combine the retrieved contexts into one string
