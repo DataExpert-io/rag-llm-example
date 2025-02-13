@@ -67,13 +67,20 @@ def main():
             for content_tuple in contents:
                 file_name = content_tuple[0]
                 content = content_tuple[1]
-                chunks = chunk_gpt_tokens(content, chunk_size=200, overlap=50)
-                print('upserting', len(chunks), 'tokens into Pinecone')
-                for chunk in chunks:
-                    upsert_to_pinecone(chunk['chunk_text'], metadata={
+                try:
+                    upsert_to_pinecone(content, metadata={
+                        'content': content,
                         'repo': repo.full_name,
-                        'file': file_name
-                    })
+                        'file': file_name,
+                        'category': 'Github'
+                    }, id=repo.full_name + '/' + file_name)
+                except:
+                    gpt_chunks = chunk_gpt_tokens(content, chunk_size=50, overlap=25)
+                    for chunk in gpt_chunks:
+                        upsert_to_pinecone(chunk['cleaned_text'],
+                                           metadata={'content': chunk['raw_text'],
+                                                     'category': 'Github'})
+
 
     except Exception as e:
         print(f"Error accessing organization '{org_name}': {str(e)}")

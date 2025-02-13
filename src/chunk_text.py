@@ -2,6 +2,15 @@ import tiktoken
 import os
 from openai import OpenAI
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+import nltk
+
+# If running for the first time:
+# nltk.download('wordnet')
+# nltk.download('punkt')
+
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import wordnet
+lemmatizer = WordNetLemmatizer()
 
 
 def chunk_gpt_tokens(text, chunk_size=200, overlap=50, model_name='text-embedding-ada-002'):
@@ -23,18 +32,17 @@ def chunk_gpt_tokens(text, chunk_size=200, overlap=50, model_name='text-embeddin
         start += (chunk_size - overlap)
         # Decode token IDs back to string for the API
         chunk_text = encoding.decode(chunk_tokens)
-        print(chunk_text)
-        # Fetch embedding for the chunk
-        response = client.embeddings.create(
-            input=chunk_text,
-            model=model_name
-        )
-        embedding_vector = response.data[0].embedding
 
+        lemmatized_words = []
+        for word in chunk_text.split():
+            lemmatized = lemmatizer.lemmatize(word, wordnet.VERB)  # specifying POS
+            lemmatized_words.append(lemmatized)
+
+        lemmatized_text = ' '.join(lemmatized_words)
         # Store results (you could also store token IDs, offsets, etc.)
         chunks.append({
-            "chunk_text": chunk_text,
-            "embedding": embedding_vector
+            "raw_text": chunk_text,
+            "cleaned_text": lemmatized_text
         })
         # Safety check to avoid infinite loops
         if overlap >= chunk_size:

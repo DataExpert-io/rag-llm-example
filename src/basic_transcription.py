@@ -17,4 +17,4 @@ transcription = client.audio.transcriptions.create(
 gpt_chunks = chunk_gpt_tokens(transcription.text, chunk_size=50, overlap=25)
 
 for chunk in gpt_chunks:
-  upsert_to_pinecone(chunk['chunk_text'], metadata={'video_id': 'videos/roast.mp4', 'category': 'Memes'})
+  upsert_to_pinecone(chunk['cleaned_text'], metadata={'content': chunk['raw_text'], 'video_id': 'videos/roast.mp4', 'category': 'Memes'})

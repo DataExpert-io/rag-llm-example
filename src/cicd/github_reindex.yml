@@ -1,0 +1,27 @@
+name: Index Changed Files in Pinecone
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  index-changed-files:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install requirements
+        run: |
+          pip install -r requirements.txt
+      - name: Run indexing script
+        env:
+          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PINECONE_INDEX_NAME: "rag-example-index"
+        run: |
+          python src/cicd/index_changed_files.py

@@ -1,7 +1,8 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template_string, url_for
 from openai import OpenAI
 from pinecone import Pinecone
+import markdown
 app = Flask(__name__)
 
 # --- Configure your API keys ---
@@ -15,7 +16,7 @@ pinecone_client = Pinecone(
 INDEX_NAME = 'rag-example-index'  # Replace with your Pinecone index name
 # Assuming the index has already been created in Pinecone
 index = pinecone_client.Index(INDEX_NAME)
-CHATGPT_MODEL = "gpt-4"
+CHATGPT_MODEL = "gpt-4o"
 
 
 def query_pinecone(query_embedding, top_k=20):
@@ -44,22 +45,17 @@ def generate_answer_with_context(question, context):
     """Calls ChatGPT with the retrieved context and returns an answer."""
     # Prepare a prompt with the context
     system_content = (
-        "You are a helpful assistant. Use the following context to answer the question, make sure to include the file path and repo in your response:\n\n"
-        f"{context}\n\n"
+        "You are a helpful assistant. Use the following context to answer the question. Provide links to context reference material when used"
         "If the answer cannot be found in the context, provide your best possible answer."
     )
-
-    print(system_content)
-    print(question)
 
     response = client.chat.completions.create(
         model=CHATGPT_MODEL,
         messages=[
             {"role": "system", "content": system_content},
-            {"role": "user", "content": question}
+            {"role": "user", "content": question + ' WITH THIS CONTEXT: \n\n' + context}
         ],
-        temperature=0.1,
-        max_tokens=500
+        temperature=0.1
     )
     print(response)
 
@@ -67,9 +63,11 @@ def generate_answer_with_context(question, context):
     return answer
 
 
-@app.route("/ask", methods=["GET"])
+@app.route("/ask", methods=["POST"])
 def ask_question():
-    question = request.args.get('question')
+    # Get the user's query from the form
+    print(request.form)
+    question = request.form.get('query')
     """
     Expects a JSON body: {"question": "Your question"}
     Returns a JSON object with the answer.
@@ -97,16 +95,55 @@ def ask_question():
             combined_text = f"""Found in file: {file}, repo: {repo} content: {text}"""
         retrieved_contexts.append(combined_text)
 
-    print(retrieved_contexts)
     # Combine the retrieved contexts into one string
     combined_context = "\n\n".join(retrieved_contexts)
 
     # 4. Send the question + context to ChatGPT
     answer = generate_answer_with_context(question, combined_context)
 
-    # 5. Return the answer
-    return jsonify({"question": question, "answer": answer})
+    # Convert Markdown to HTML
+    html_content = markdown.markdown(answer)
 
+    # Render the same template but pass the converted HTML to be displayed
+    return render_template_string(HTML_TEMPLATE, query=question, content=html_content)
+
+
+
+HTML_TEMPLATE = """
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Markdown Display</title>
+  </head>
+  <body>
+    <h1>Submit Your Query</h1>
+    <form action="{{ url_for('ask_question') }}" method="post">
+      <label for="query">Query:</label><br>
+        {% if query %}
+        
+            <input type="text" id="query" value="{{ query }}" name="query" size="50"/><br><br>
+          {% endif %}
+          
+           {% if not query %}
+        
+            <input type="text" id="query" name="query" size="50"/><br><br>
+          {% endif %}
+      <button type="submit">Submit</button>
+    </form>
+    {% if content %}
+      <hr/>
+      <h2>Response</h2>
+      <div>{{ content|safe }}</div>
+    {% endif %}
+  </body>
+</html>
+"""
+
+@app.route("/", methods=["GET"])
+def home_page():
+    # Renders the form, no content yet
+    return render_template_string(HTML_TEMPLATE, content=None)
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=3001)
